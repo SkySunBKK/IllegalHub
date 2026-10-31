@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import {
   BookOpen,
   Shield,
@@ -7,6 +10,8 @@ import {
   History,
   Home,
   AlertTriangle,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 export default function Shell({
@@ -16,6 +21,8 @@ export default function Shell({
   children: React.ReactNode;
   active?: string;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
+
   const links = [
     { href: "/", label: "Обзор", id: "home", Icon: Home },
     { href: "/rules", label: "Правила", id: "rules", Icon: BookOpen },
@@ -26,14 +33,31 @@ export default function Shell({
   ];
 
   return (
-    <div className="shell">
-      <aside className="sidebar">
-        <Link href="/" className="brand">
-          <span className="brandmark">IH</span>
-          <span className="brandname">
-            ILLEGAL<span>HUB</span>
-          </span>
-        </Link>
+    <div className={`shell ${collapsed ? "shell--collapsed" : ""}`}>
+      <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
+        <div className="sidebar-top">
+          <Link href="/" className="brand" title="IllegalHub">
+            <span className="brandmark">IH</span>
+            <span className="brandname">
+              ILLEGAL<span>HUB</span>
+            </span>
+          </Link>
+
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={() => setCollapsed((value) => !value)}
+            aria-label={collapsed ? "Развернуть меню" : "Свернуть меню"}
+            aria-expanded={!collapsed}
+            title={collapsed ? "Развернуть меню" : "Свернуть меню"}
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+              <PanelLeftClose size={18} />
+            )}
+          </button>
+        </div>
 
         <div className="sidebar-caption">НАВИГАЦИЯ</div>
 
@@ -43,8 +67,9 @@ export default function Shell({
               className={active === id ? "active" : ""}
               href={href}
               key={id}
+              title={collapsed ? label : undefined}
             >
-              <Icon size={17} strokeWidth={1.8} />
+              <Icon size={18} strokeWidth={1.8} />
               <span>{label}</span>
             </Link>
           ))}
@@ -52,9 +77,9 @@ export default function Shell({
 
         <div className="sidefoot">
           <span className="sidefoot-mark">
-            <Shield size={14} />
+            <Shield size={15} />
           </span>
-          <span>
+          <span className="sidefoot-copy">
             ILLEGALHUB
             <br />
             База знаний сообщества
@@ -81,7 +106,6 @@ export default function Shell({
           <span>
             ILLEGALHUB <i>·</i> MODERATION KNOWLEDGE BASE
           </span>
-
           <span>Материалы для последовательной модерации</span>
         </footer>
       </main>

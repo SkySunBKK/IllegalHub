@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import ArticleBrowser from "@/components/ArticleBrowser";
+import Shell from "@/components/Shell";
 
 export const revalidate = 0;
 
@@ -12,22 +13,22 @@ export default async function RulesPage() {
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
 
-  if (error) {
-    return (
-      <main className="content">
-        <div className="error">
-          Не удалось загрузить правила: {error.message}
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <ArticleBrowser
-      articles={articles ?? []}
-      heading="Правила сервера"
-      description="Все основные правила и требования сообщества в одном месте. Используй поиск и фильтры, чтобы быстро найти нужную информацию."
-      emptyText="Опубликованные правила появятся здесь."
-    />
+    <Shell active="rules">
+      {error ? (
+        <main className="content">
+          <div className="error">
+            Не удалось загрузить правила: {error.message}
+          </div>
+        </main>
+      ) : (
+        <ArticleBrowser
+          articles={articles ?? []}
+          heading="Правила сервера"
+          description="Все основные правила и требования сообщества в одном месте. Используй поиск и фильтры, чтобы быстро найти нужную информацию."
+          emptyText="Опубликованные правила появятся здесь."
+        />
+      )}
+    </Shell>
   );
 }
