@@ -1776,3 +1776,67 @@ h3 {
     max-height: 240px;
   }
 }
+
+
+/* ========================================
+   CONTENT CARDS: TRAINING & LOGIN
+======================================== */
+
+.content > .card {
+  width: 100%;
+  min-width: 0;
+  padding: 25px 26px;
+}
+
+.content > .card h3 {
+  margin: 0 0 14px;
+}
+
+.content > .card ol,
+.content > .card ul {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.content > .card li {
+  padding-left: 2px;
+}
+
+.content > .card .eyebrow {
+  margin-bottom: 8px;
+}
+
+.content > .card h1 {
+  margin: 0 0 10px;
+}
+
+.content > .card > p {
+  margin: 0 0 18px;
+}
+
+.content > .card form {
+  width: 100%;
+  margin: 0;
+}
+
+.content > .card .field {
+  width: 100%;
+}
+
+.content > .card .field input,
+.content > .card .field textarea,
+.content > .card .field select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
+
+.content > .card .button {
+  margin-top: 2px;
+}
+
+@media (max-width: 720px) {
+  .content > .card {
+    padding: 20px 18px;
+  }
+}
