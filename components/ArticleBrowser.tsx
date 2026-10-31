@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Search,
@@ -87,6 +87,128 @@ function FormattedBody({ body }: { body: string }) {
   flush();
 
   return <div className="kb-body">{output}</div>;
+}
+
+
+type SelectOption = {
+  value: string;
+  label: string;
+};
+
+function CustomSelect({
+  value,
+  options,
+  onChange,
+  ariaLabel,
+  icon,
+}: {
+  value: string;
+  options: SelectOption[];
+  onChange: (value: string) => void;
+  ariaLabel: string;
+  icon: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value);
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  return (
+    <div
+      className={`kb-custom-select ${open ? "is-open" : ""}`}
+      ref={rootRef}
+    >
+      <button
+        type="button"
+        className="kb-select-trigger"
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="kb-select-icon">{icon}</span>
+        <span className="kb-select-value">
+          {selected?.label ?? value}
+        </span>
+        <svg
+          className="kb-select-chevron"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="m6 9 6 6 6-6"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="kb-select-menu" role="listbox" aria-label={ariaLabel}>
+          {options.map((option) => {
+            const active = option.value === value;
+
+            return (
+              <button
+                type="button"
+                role="option"
+                aria-selected={active}
+                key={option.value}
+                className={`kb-select-option ${active ? "is-selected" : ""}`}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+              >
+                <span>{option.label}</span>
+                {active && (
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="m5 12 4 4L19 6"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ArticleBrowser({
@@ -204,35 +326,28 @@ export default function ArticleBrowser({
         </label>
 
         <div className="kb-filter-row">
-          <label className="kb-select-wrap">
-            <SlidersHorizontal size={15} />
+          <CustomSelect
+            value={category}
+            onChange={setCategory}
+            ariaLabel="Фильтр по категории"
+            icon={<SlidersHorizontal size={15} />}
+            options={categories.map((item) => ({
+              value: item,
+              label: item,
+            }))}
+          />
 
-            <select
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              aria-label="Фильтр по категории"
-            >
-              {categories.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="kb-select-wrap">
-            <ArrowUpDown size={15} />
-
-            <select
-              value={sort}
-              onChange={(event) => setSort(event.target.value)}
-              aria-label="Сортировка"
-            >
-              <option value="default">По порядку</option>
-              <option value="title">По названию: А–Я</option>
-              <option value="title-desc">По названию: Я–А</option>
-            </select>
-          </label>
+          <CustomSelect
+            value={sort}
+            onChange={setSort}
+            ariaLabel="Сортировка"
+            icon={<ArrowUpDown size={15} />}
+            options={[
+              { value: "default", label: "По порядку" },
+              { value: "title", label: "По названию: А–Я" },
+              { value: "title-desc", label: "По названию: Я–А" },
+            ]}
+          />
 
           {(query ||
             category !== "Все категории" ||
