@@ -1,0 +1,2 @@
+import Shell from "@/components/Shell";
+export default function History(){return <Shell active="history"><div className="content"><div className="eyebrow">Прозрачность</div><h1>История изменений</h1><p className="muted">Здесь будет отображаться журнал обновлений базы знаний.</p><div className="notice">Журнал начнёт заполняться после подключения редактора материалов.</div></div></Shell>}

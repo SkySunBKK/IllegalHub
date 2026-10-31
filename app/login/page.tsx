@@ -1,0 +1,7 @@
+ "use client";
+import {useState} from "react";
+import Link from "next/link";
+import {supabase} from "@/lib/supabase";
+export default function Login(){const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[msg,setMsg]=useState("");const[busy,setBusy]=useState(false);
+async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setMsg("");const{error}=await supabase.auth.signInWithPassword({email,password});setBusy(false);setMsg(error?error.message:"Вход выполнен. Перейди в /admin.");if(!error)window.location.href="/admin";}
+return <main className="content" style={{maxWidth:480}}><Link href="/" className="crumb">← На главную</Link><div className="card" style={{marginTop:30}}><div className="eyebrow">Закрытая зона</div><h1>Вход в IllegalHub</h1><p className="muted">Используй выданную командой учётную запись.</p><form onSubmit={submit}><div className="field"><label>Email</label><input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="moderator@example.com"/></div><div className="field"><label>Пароль</label><input type="password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••"/></div><button className="button" disabled={busy}>{busy?"Входим…":"Войти"}</button></form>{msg&&<p className="muted">{msg}</p>}</div></main>;}

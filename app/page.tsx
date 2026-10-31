@@ -1,0 +1,9 @@
+import Shell from "@/components/Shell";
+import Link from "next/link";
+import { BookOpen, AlertTriangle, Gavel, GraduationCap, Search, ArrowUpRight } from "lucide-react";
+export default function Home(){const cards=[
+ {title:"Правила сервера",desc:"Официальные правила, пояснения, исключения и примеры.",href:"/rules",Icon:BookOpen},
+ {title:"База нарушений",desc:"Разборы ситуаций и единый подход к спорным случаям.",href:"/cases",Icon:AlertTriangle},
+ {title:"Система наказаний",desc:"Меры воздействия, сроки и условия применения.",href:"/punishments",Icon:Gavel},
+ {title:"Обучение модераторов",desc:"Инструкции, алгоритмы действий и типичные ошибки.",href:"/training",Icon:GraduationCap}
+];return <Shell><div className="content"><section className="hero"><div className="eyebrow">Discord server · Knowledge base</div><h1>Добро пожаловать в IllegalHub</h1><p className="muted" style={{maxWidth:650}}>Единый стандарт модерации нашего сервера. Находи правила, сверяйся с примерами и принимай последовательные решения.</p><Link className="button" href="/rules"><Search size={16} style={{marginRight:8}}/>Перейти к правилам</Link></section><div className="sectionhead"><div><div className="eyebrow">Навигация</div><h2>База знаний</h2></div><span className="pill">Для модераторов и участников</span></div><div className="grid">{cards.map(({title,desc,href,Icon})=><Link href={href} className="tile" key={title}><div className="icon"><Icon size={19}/></div><h3>{title}<ArrowUpRight size={15} style={{float:"right",color:"#888"}}/></h3><p>{desc}</p></Link>)}</div><div className="sectionhead"><h2>Важно</h2></div><div className="notice">Материалы базы знаний являются рабочим стандартом команды. Если ситуация неоднозначная или правило не покрывает случай, перед наказанием передай вопрос старшему модератору.</div></div></Shell>}

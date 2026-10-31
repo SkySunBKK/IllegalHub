@@ -1,0 +1,2 @@
+import Shell from "@/components/Shell";
+export default function Punishments(){return <Shell active="punishments"><div className="content"><div className="eyebrow">Регламент</div><h1>Система наказаний</h1><p className="muted">Здесь будут опубликованы утверждённые меры и сроки.</p><div className="notice">Не устанавливай сроки наказаний самостоятельно. Заполни этот раздел только после согласования с руководством сервера.</div></div></Shell>}
