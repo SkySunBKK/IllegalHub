@@ -24,6 +24,368 @@ const emptyForm = {
   kind: "rule" as Article["kind"],
 };
 
+
+function RichTextEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (html: string) => void;
+}) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [stats, setStats] = useState({ words: 0, chars: 0 });
+
+  useEffect(() => {
+    if (!editorRef.current) return;
+
+    const html = /<\/?[a-z][\s\S]*>/i.test(value || "")
+      ? value
+      : (value || "")
+          .split(/\n{2,}/)
+          .map(
+            (x) =>
+              `<p>${x.replace(/\n/g, "<br>")}</p>`
+          )
+          .join("");
+
+    editorRef.current.innerHTML = html;
+    updateStats();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function updateStats() {
+    const text = editorRef.current?.innerText || "";
+
+    setStats({
+      words: text.trim() ? text.trim().split(/\s+/).length : 0,
+      chars: text.length,
+    });
+  }
+
+  function sync() {
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+      updateStats();
+    }
+  }
+
+  function command(name: string, arg?: string) {
+    editorRef.current?.focus();
+    document.execCommand(name, false, arg);
+    sync();
+  }
+
+  function insert(html: string) {
+    editorRef.current?.focus();
+    document.execCommand("insertHTML", false, html);
+    sync();
+  }
+
+  function askLink() {
+    const url = window.prompt("Вставь адрес ссылки:");
+
+    if (url) {
+      command("createLink", url);
+    }
+  }
+
+  function addImage() {
+    const url = window.prompt("Вставь URL изображения:");
+
+    if (url) {
+      insert(
+        `<img src="${url.replace(/"/g, "&quot;")}" alt="Изображение" style="max-width:100%;height:auto;border-radius:10px;margin:12px 0" />`
+      );
+    }
+  }
+
+  function addTable() {
+    const r = Math.max(
+      1,
+      Math.min(
+        12,
+        Number(window.prompt("Количество строк", "3")) || 3
+      )
+    );
+
+    const c = Math.max(
+      1,
+      Math.min(
+        8,
+        Number(window.prompt("Количество столбцов", "2")) || 2
+      )
+    );
+
+    const row = `<tr>${Array.from(
+      { length: c },
+      () => "<td><br></td>"
+    ).join("")}</tr>`;
+
+    insert(
+      `<table class="editor-table" style="width:100%;border-collapse:collapse;margin:14px 0" border="1"><tbody><tr>${Array.from(
+        { length: c },
+        () => "<th>Заголовок</th>"
+      ).join("")}</tr>${Array.from(
+        { length: Math.max(0, r - 1) },
+        () => row
+      ).join("")}</tbody></table><p><br></p>`
+    );
+  }
+
+  const btn = (
+    label: string,
+    action: () => void,
+    content: React.ReactNode
+  ) => (
+    <button
+      type="button"
+      className="rich-tool-button"
+      title={label}
+      aria-label={label}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={action}
+    >
+      {content}
+    </button>
+  );
+
+  return (
+    <div className="word-editor-layout">
+      <section className="rich-editor">
+        <div className="word-ribbon">
+          <div className="word-ribbon-tabs">
+            <span className="is-active">Главная</span>
+            <span>Вставка</span>
+            <span>Формат</span>
+          </div>
+
+          <div
+            className="rich-editor-toolbar"
+            aria-label="Панель форматирования"
+          >
+            <div className="rich-toolbar-group">
+              {btn("Отменить", () => command("undo"), "↶")}
+              {btn("Повторить", () => command("redo"), "↷")}
+              <i />
+
+              {btn("Жирный", () => command("bold"), <strong>B</strong>)}
+              {btn("Курсив", () => command("italic"), <em>I</em>)}
+              {btn("Подчёркнутый", () => command("underline"), <u>U</u>)}
+              {btn("Зачёркнутый", () => command("strikeThrough"), <s>S</s>)}
+              {btn("Нижний индекс", () => command("subscript"), "x₂")}
+              {btn("Верхний индекс", () => command("superscript"), "x²")}
+
+              <select
+                aria-label="Шрифт"
+                defaultValue="Arial"
+                onChange={(e) => command("fontName", e.target.value)}
+              >
+                <option>Arial</option>
+                <option>Georgia</option>
+                <option>Verdana</option>
+                <option>Tahoma</option>
+                <option>Times New Roman</option>
+              </select>
+
+              <select
+                aria-label="Размер"
+                defaultValue="3"
+                onChange={(e) => command("fontSize", e.target.value)}
+              >
+                {[
+                  [1, "8 pt"],
+                  [2, "10 pt"],
+                  [3, "12 pt"],
+                  [4, "14 pt"],
+                  [5, "18 pt"],
+                  [6, "24 pt"],
+                  [7, "36 pt"],
+                ].map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="rich-toolbar-group">
+              <select
+                aria-label="Стиль абзаца"
+                defaultValue="p"
+                onChange={(e) => command("formatBlock", e.target.value)}
+              >
+                <option value="p">Обычный текст</option>
+                <option value="h1">Заголовок 1</option>
+                <option value="h2">Заголовок 2</option>
+                <option value="h3">Заголовок 3</option>
+                <option value="h4">Заголовок 4</option>
+                <option value="pre">Блок кода</option>
+              </select>
+
+              <label className="rich-color-control">
+                A
+                <input
+                  aria-label="Цвет текста"
+                  type="color"
+                  defaultValue="#263b2b"
+                  onChange={(e) => command("foreColor", e.target.value)}
+                />
+              </label>
+
+              <label className="rich-color-control">
+                ▰
+                <input
+                  aria-label="Цвет выделения"
+                  type="color"
+                  defaultValue="#fff2a8"
+                  onChange={(e) => command("hiliteColor", e.target.value)}
+                />
+              </label>
+
+              {btn(
+                "Маркированный список",
+                () => command("insertUnorderedList"),
+                "• Список"
+              )}
+
+              {btn(
+                "Нумерованный список",
+                () => command("insertOrderedList"),
+                "1. Список"
+              )}
+
+              {btn("Цитата", () => command("formatBlock", "blockquote"), "❝")}
+              {btn("Ссылка", askLink, "↗")}
+              {btn("Изображение по URL", addImage, "▧")}
+              {btn("Таблица", addTable, "▦")}
+
+              {btn(
+                "Горизонтальная линия",
+                () => command("insertHorizontalRule"),
+                "―"
+              )}
+            </div>
+
+            <div className="rich-toolbar-group">
+              {btn("По левому краю", () => command("justifyLeft"), "⇤")}
+              {btn("По центру", () => command("justifyCenter"), "↔")}
+              {btn("По правому краю", () => command("justifyRight"), "⇥")}
+              {btn("По ширине", () => command("justifyFull"), "☰")}
+              {btn("Уменьшить отступ", () => command("outdent"), "←")}
+              {btn("Увеличить отступ", () => command("indent"), "→")}
+
+              {btn(
+                "Очистить форматирование",
+                () => command("removeFormat"),
+                "Очистить"
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="word-page-wrap">
+          <div
+            ref={editorRef}
+            className="rich-editor-content"
+            contentEditable
+            suppressContentEditableWarning
+            role="textbox"
+            aria-label="Содержание статьи"
+            aria-multiline="true"
+            data-placeholder="Начни писать статью… Выделяй текст и используй инструменты форматирования."
+            onInput={sync}
+            onBlur={sync}
+          />
+        </div>
+
+        <div className="rich-editor-hint">
+          Изменения сохраняются вместе со статьёй. Используй панель
+          инструментов для оформления текста, списков, таблиц и изображений.
+        </div>
+      </section>
+
+      <aside className="word-editor-sidebar">
+        <div className="word-side-card">
+          <span className="word-side-kicker">ДОКУМЕНТ</span>
+          <h3>Сводка статьи</h3>
+
+          <div className="word-stat">
+            <span>Слова</span>
+            <b>{stats.words}</b>
+          </div>
+
+          <div className="word-stat">
+            <span>Символы</span>
+            <b>{stats.chars}</b>
+          </div>
+
+          <div className="word-stat">
+            <span>Время чтения</span>
+            <b>{Math.max(1, Math.ceil(stats.words / 180))} мин.</b>
+          </div>
+        </div>
+
+        <div className="word-side-card">
+          <span className="word-side-kicker">БЫСТРАЯ ВСТАВКА</span>
+          <h3>Элементы</h3>
+
+          <button
+            type="button"
+            onClick={() =>
+              insert("<h2>Новый раздел</h2><p>Текст раздела…</p>")
+            }
+          >
+            ＋ Заголовок и текст
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              insert("<blockquote><p>Важная информация…</p></blockquote>")
+            }
+          >
+            ❝ Блок-цитата
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              insert(
+                '<div style="padding:14px 16px;border-left:4px solid #42634b;background:#edf4ed;border-radius:8px;margin:14px 0"><strong>Важно</strong><p>Добавь пояснение для участников.</p></div>'
+              )
+            }
+          >
+            ▤ Важное примечание
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              insert("<pre><code>Вставь пример или команду</code></pre>")
+            }
+          >
+            {"</>"} Блок кода
+          </button>
+
+          <button type="button" onClick={addTable}>
+            ▦ Таблица
+          </button>
+        </div>
+
+        <div className="word-side-tip">
+          <b>Подсказка</b>
+          <p>
+            Выдели фрагмент текста, чтобы применить к нему стиль, цвет или
+            форматирование.
+          </p>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+
 export default function Admin() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("");
@@ -122,7 +484,8 @@ export default function Admin() {
   async function saveArticle(event: FormEvent<HTMLFormElement> | null, publish: boolean) {
     event?.preventDefault();
     if (!user) return;
-    if (!form.title.trim() || !form.body.trim()) {
+    const bodyText = form.body.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").trim();
+    if (!form.title.trim() || !bodyText) {
       setMessage("Заполни название и содержание статьи.");
       return;
     }
@@ -247,24 +610,11 @@ export default function Admin() {
 
               <div className="field">
                 <label>Содержание статьи</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
-                  {[
-                    ["Заголовок", "\n## Заголовок\n"],
-                    ["Подзаголовок", "\n### Подзаголовок\n"],
-                    ["Жирный текст", "**важный текст**"],
-                    ["Список", "\n- пункт списка\n"],
-                    ["Нумерация", "\n1. первый пункт\n"],
-                  ].map(([label, snippet]) => (
-                    <button key={label} type="button" className="button secondary" style={{ padding: "7px 10px", fontSize: 12 }}
-                      onClick={() => setForm((current) => ({ ...current, body: current.body + snippet }))}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <textarea required value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
-                  placeholder={"Опиши правило или ситуацию подробно…\n\nМожно использовать ## для заголовков, - для списков и **текст** для выделения."}
-                  style={{ minHeight: 240 }} />
-                <small className="muted">Поддерживаются заголовки ## и ###, списки через -, нумерованные списки и **жирный текст**.</small>
+                <RichTextEditor
+                  key={editingId || "new-article"}
+                  value={form.body}
+                  onChange={(html) => setForm((current) => ({ ...current, body: html }))}
+                />
               </div>
 
               <div className="field">

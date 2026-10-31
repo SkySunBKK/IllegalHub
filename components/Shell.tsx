@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   PanelLeftClose,
   PanelLeftOpen,
+  FilePenLine,
 } from "lucide-react";
 
 export default function Shell({
@@ -30,6 +31,7 @@ export default function Shell({
     { href: "/punishments", label: "Наказания", id: "punishments", Icon: Gavel },
     { href: "/training", label: "Обучение", id: "training", Icon: GraduationCap },
     { href: "/history", label: "История", id: "history", Icon: History },
+    { href: "/admin", label: "Редактор", id: "admin", Icon: FilePenLine },
   ];
 
   return (
