@@ -2,6 +2,8 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import Shell from "@/components/Shell";
+import "./admin-editor.css";
 
 type ArticleImage = { url: string; path: string; name: string };
 type Article = {
@@ -560,7 +562,8 @@ export default function Admin() {
   const visibleRows = rows.filter((row) => filter === "all" || row.kind === filter);
 
   return (
-    <main className="content" style={{ maxWidth: 1120 }}>
+     <Shell active="admin">
+      <div className="content admin-content">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <div className="eyebrow">IllegalHub · Control panel</div>
@@ -678,6 +681,7 @@ export default function Admin() {
           ))}
         </>
       )}
-    </main>
+      </div>
+  </Shell>
   );
 }

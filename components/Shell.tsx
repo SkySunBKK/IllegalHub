@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   BookOpen,
   Shield,
@@ -19,7 +19,7 @@ export default function Shell({
   children,
   active = "home",
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   active?: string;
 }) {
   const [collapsed, setCollapsed] = useState(false);
