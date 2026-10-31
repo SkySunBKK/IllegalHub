@@ -1493,3 +1493,130 @@ h3 {
     width: 100%;
   }
 }
+
+
+/* ========================================
+   FINAL VISUAL POLISH
+======================================== */
+
+/* Keep the brand and collapse control on one clean baseline. */
+.sidebar-top {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.sidebar-top .brand {
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-toggle {
+  align-self: center;
+  margin: 0;
+}
+
+/* Remove the inherited brand spacing that created the large blank area. */
+.sidebar-caption {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+/* Compact, refined select controls with a custom chevron. */
+.kb-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid #dce6dc;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbf8 100%);
+  color: #718075;
+  box-shadow: 0 2px 7px rgba(39, 66, 45, 0.045);
+  transition: border-color 160ms ease, box-shadow 160ms ease,
+    background 160ms ease, transform 160ms ease;
+}
+
+.kb-select-wrap:hover {
+  border-color: #b9cdbb;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(39, 66, 45, 0.07);
+}
+
+.kb-select-wrap:focus-within {
+  border-color: #8eae93;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(66, 99, 75, 0.10);
+}
+
+.kb-select-wrap > svg {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  color: #718675;
+}
+
+.kb-select-wrap select {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 95px;
+  max-width: 190px;
+  min-height: 42px;
+  padding: 0 24px 0 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23718675' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 3px center;
+  color: #3f5144;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.kb-select-wrap select:focus {
+  box-shadow: none;
+}
+
+.kb-select-wrap option {
+  background: #ffffff;
+  color: #3f5144;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .sidebar-top {
+    align-items: center;
+    margin-bottom: 15px;
+  }
+
+  .sidebar-top .brand {
+    margin: 0;
+    padding: 0;
+  }
+
+  .sidebar-caption {
+    margin-bottom: 9px;
+  }
+
+  .kb-select-wrap {
+    min-height: 42px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .kb-select-wrap select {
+    min-width: 0;
+    max-width: none;
+    min-height: 40px;
+    font-size: 11px;
+  }
+}
