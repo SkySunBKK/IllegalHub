@@ -14,7 +14,7 @@ export default async function CasesPage() {
 
   if (error) {
     return (
-      <main className="page">
+      <main className="content">
         <div className="error">
           Не удалось загрузить нарушения: {error.message}
         </div>
@@ -23,21 +23,11 @@ export default async function CasesPage() {
   }
 
   return (
-    <main className="page">
-      <section className="hero">
-        <div className="eyebrow">ILLEGALHUB / MODERATION</div>
-        <h1>Нарушения и ситуации</h1>
-        <p>
-          Разборы нарушений, спорных ситуаций и примеры для модераторов.
-          Используй поиск и фильтры, чтобы быстрее находить нужные случаи.
-        </p>
-      </section>
-
-      <ArticleBrowser
-        articles={articles ?? []}
-        emptyTitle="Материалы пока не добавлены"
-        emptyDescription="Опубликованные разборы нарушений появятся здесь."
-      />
-    </main>
+    <ArticleBrowser
+      articles={articles ?? []}
+      heading="Нарушения и ситуации"
+      description="Разборы нарушений, спорных ситуаций и примеры для модераторов. Используй поиск и фильтры, чтобы быстро найти нужную информацию."
+      emptyText="Опубликованные разборы нарушений появятся здесь."
+    />
   );
 }

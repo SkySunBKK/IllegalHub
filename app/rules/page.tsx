@@ -14,7 +14,7 @@ export default async function RulesPage() {
 
   if (error) {
     return (
-      <main className="page">
+      <main className="content">
         <div className="error">
           Не удалось загрузить правила: {error.message}
         </div>
@@ -23,21 +23,11 @@ export default async function RulesPage() {
   }
 
   return (
-    <main className="page">
-      <section className="hero">
-        <div className="eyebrow">ILLEGALHUB / KNOWLEDGE BASE</div>
-        <h1>Правила сервера</h1>
-        <p>
-          Все основные правила и требования сообщества в одном месте.
-          Используй поиск и фильтры, чтобы быстро найти нужную информацию.
-        </p>
-      </section>
-
-      <ArticleBrowser
-        articles={articles ?? []}
-        emptyTitle="Правила пока не добавлены"
-        emptyDescription="Опубликованные правила появятся здесь."
-      />
-    </main>
+    <ArticleBrowser
+      articles={articles ?? []}
+      heading="Правила сервера"
+      description="Все основные правила и требования сообщества в одном месте. Используй поиск и фильтры, чтобы быстро найти нужную информацию."
+      emptyText="Опубликованные правила появятся здесь."
+    />
   );
 }
