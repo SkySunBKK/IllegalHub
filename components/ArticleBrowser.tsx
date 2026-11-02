@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import DOMPurify from "isomorphic-dompurify";
 import {
   Search,
   X,
@@ -42,7 +43,30 @@ function inlineText(text: string) {
 }
 
 function FormattedBody({ body }: { body: string }) {
-  const lines = (body || "").split(/\r?\n/);
+  const content = body || "";
+
+  // Новые материалы из rich-text редактора сохраняются как HTML.
+  // Старые материалы в Markdown продолжаем отображать прежним способом.
+  const containsHtml = /<\/?[a-z][^>]*>/i.test(content);
+
+  if (containsHtml) {
+    const cleanHtml = DOMPurify.sanitize(content, {
+      USE_PROFILES: { html: true },
+      ADD_ATTR: ["style", "class", "rel"],
+      FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form"],
+      FORBID_ATTR: ["onerror", "onclick", "onload"],
+    });
+
+    return (
+      <div
+        className="kb-body"
+        dangerouslySetInnerHTML={{ __html: cleanHtml }}
+      />
+    );
+  }
+
+  // Совместимость с уже опубликованными материалами в Markdown/обычном тексте.
+  const lines = content.split(/\r?\n/);
   const output: ReactNode[] = [];
   let bullets: string[] = [];
 
