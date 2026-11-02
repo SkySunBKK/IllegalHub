@@ -4,6 +4,40 @@ import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Shell from "@/components/Shell";
 import "./admin-editor.css";
+import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  AlertCircle,
+  Bold,
+  ClipboardPaste,
+  Code2,
+  Eraser,
+  FileText,
+  Heading2,
+  Highlighter,
+  ImagePlus,
+  IndentDecrease,
+  IndentIncrease,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  Minus,
+  Palette,
+  Plus,
+  Quote,
+  Redo2,
+  Strikethrough,
+  Subscript,
+  Superscript,
+  Table2,
+  Undo2,
+  Underline,
+  Unlink,
+} from "lucide-react";
+import type { ReactNode } from "react";
 
 type ArticleImage = { url: string; path: string; name: string };
 type Article = {
@@ -35,120 +69,225 @@ function RichTextEditor({
   onChange: (html: string) => void;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const selectionRef = useRef<Range | null>(null);
+  const lastEmittedHtmlRef = useRef<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"home" | "insert" | "format">("home");
   const [stats, setStats] = useState({ words: 0, chars: 0 });
-
-  useEffect(() => {
-    if (!editorRef.current) return;
-
-    const html = /<\/?[a-z][\s\S]*>/i.test(value || "")
-      ? value
-      : (value || "")
-          .split(/\n{2,}/)
-          .map(
-            (x) =>
-              `<p>${x.replace(/\n/g, "<br>")}</p>`
-          )
-          .join("");
-
-    editorRef.current.innerHTML = html;
-    updateStats();
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function updateStats() {
     const text = editorRef.current?.innerText || "";
-
     setStats({
       words: text.trim() ? text.trim().split(/\s+/).length : 0,
       chars: text.length,
     });
   }
 
-  function sync() {
-    if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
-      updateStats();
+  function rememberSelection() {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (
+      editor &&
+      selection &&
+      selection.rangeCount > 0 &&
+      selection.anchorNode &&
+      editor.contains(selection.anchorNode)
+    ) {
+      selectionRef.current = selection.getRangeAt(0).cloneRange();
     }
   }
 
+  function restoreSelection() {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    editor.focus();
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    const savedRange = selectionRef.current;
+    if (savedRange && editor.contains(savedRange.commonAncestorContainer)) {
+      selection.removeAllRanges();
+      selection.addRange(savedRange);
+      return;
+    }
+
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || lastEmittedHtmlRef.current === value) return;
+
+    const html = /<\/?[a-z][\s\S]*>/i.test(value || "")
+      ? value
+      : (value || "")
+          .split(/\n{2,}/)
+          .map((paragraph) => {
+            const escaped = paragraph
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/\n/g, "<br>");
+            return `<p>${escaped}</p>`;
+          })
+          .join("");
+
+    if (editor.innerHTML !== html) editor.innerHTML = html;
+    lastEmittedHtmlRef.current = value;
+    updateStats();
+    // The editor intentionally synchronizes only when its external value changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  function sync() {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const html = editor.innerHTML;
+    lastEmittedHtmlRef.current = html;
+    onChange(html);
+    updateStats();
+    rememberSelection();
+  }
+
   function command(name: string, arg?: string) {
-    editorRef.current?.focus();
+    restoreSelection();
     document.execCommand(name, false, arg);
     sync();
   }
 
   function insert(html: string) {
-    editorRef.current?.focus();
+    restoreSelection();
     document.execCommand("insertHTML", false, html);
     sync();
   }
 
-  function askLink() {
-    const url = window.prompt("Вставь адрес ссылки:");
+  function escapeHtml(text: string) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
 
-    if (url) {
-      command("createLink", url);
+  function safeWebUrl(raw: string) {
+    try {
+      const parsed = new URL(raw.trim(), window.location.origin);
+      return ["http:", "https:"].includes(parsed.protocol) ? parsed.href : null;
+    } catch {
+      return null;
     }
+  }
+
+  function addLink() {
+    const raw = window.prompt("Вставь адрес ссылки (https://…):");
+    if (!raw) return;
+    const url = safeWebUrl(raw);
+    if (!url) {
+      window.alert("Допустимы только ссылки http:// и https://.");
+      return;
+    }
+    command("createLink", url);
+  }
+
+  function removeLink() {
+    command("unlink");
   }
 
   function addImage() {
-    const url = window.prompt("Вставь URL изображения:");
-
-    if (url) {
-      insert(
-        `<img src="${url.replace(/"/g, "&quot;")}" alt="Изображение" style="max-width:100%;height:auto;border-radius:10px;margin:12px 0" />`
-      );
+    const raw = window.prompt("Вставь прямой URL изображения (https://…):");
+    if (!raw) return;
+    const url = safeWebUrl(raw);
+    if (!url) {
+      window.alert("Укажи корректный адрес изображения с http:// или https://.");
+      return;
     }
+    const alt = window.prompt("Описание изображения (необязательно):", "Иллюстрация") || "Иллюстрация";
+    insert(
+      `<p><img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}" style="max-width:100%;height:auto;border-radius:10px;margin:12px 0" /></p><p><br></p>`
+    );
   }
 
   function addTable() {
-    const r = Math.max(
-      1,
-      Math.min(
-        12,
-        Number(window.prompt("Количество строк", "3")) || 3
-      )
-    );
+    const rowsInput = window.prompt("Количество строк (включая заголовок)", "3");
+    if (rowsInput === null) return;
+    const colsInput = window.prompt("Количество столбцов", "2");
+    if (colsInput === null) return;
 
-    const c = Math.max(
-      1,
-      Math.min(
-        8,
-        Number(window.prompt("Количество столбцов", "2")) || 2
-      )
-    );
-
-    const row = `<tr>${Array.from(
-      { length: c },
-      () => "<td><br></td>"
+    const rows = Math.max(1, Math.min(12, Number(rowsInput) || 3));
+    const cols = Math.max(1, Math.min(8, Number(colsInput) || 2));
+    const cellStyle = "border:1px solid #d9e2d7;padding:9px;min-width:50px;text-align:left";
+    const header = `<tr>${Array.from(
+      { length: cols },
+      (_, index) => `<th style="${cellStyle};background:#eff5ee">Заголовок ${index + 1}</th>`
     ).join("")}</tr>`;
+    const bodyRows = Array.from(
+      { length: Math.max(0, rows - 1) },
+      () => `<tr>${Array.from(
+        { length: cols },
+        () => `<td style="${cellStyle}"><br></td>`
+      ).join("")}</tr>`
+    ).join("");
 
     insert(
-      `<table class="editor-table" style="width:100%;border-collapse:collapse;margin:14px 0" border="1"><tbody><tr>${Array.from(
-        { length: c },
-        () => "<th>Заголовок</th>"
-      ).join("")}</tr>${Array.from(
-        { length: Math.max(0, r - 1) },
-        () => row
-      ).join("")}</tbody></table><p><br></p>`
+      `<table style="width:100%;border-collapse:collapse;margin:14px 0" border="1"><tbody>${header}${bodyRows}</tbody></table><p><br></p>`
     );
   }
 
-  const btn = (
-    label: string,
-    action: () => void,
-    content: React.ReactNode
-  ) => (
+  async function pastePlainText() {
+    let text = "";
+    try {
+      if (!navigator.clipboard?.readText) throw new Error("Clipboard API недоступен");
+      text = await navigator.clipboard.readText();
+    } catch {
+      text = window.prompt("Вставка из буфера недоступна. Вставь текст сюда:") || "";
+    }
+    if (!text) return;
+
+    restoreSelection();
+    const inserted = document.execCommand("insertText", false, text);
+    if (!inserted) {
+      const safeText = escapeHtml(text).replace(/\r?\n/g, "<br>");
+      document.execCommand("insertHTML", false, safeText);
+    }
+    sync();
+  }
+
+  function applyLineHeight(lineHeight: string) {
+    restoreSelection();
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    let node: Node | null = range.startContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    const block = (node as Element | null)?.closest(
+      "p,h1,h2,h3,h4,h5,h6,li,blockquote,pre,div"
+    );
+    const target = block && editor.contains(block) ? block : editor;
+    (target as HTMLElement).style.lineHeight = lineHeight;
+    sync();
+  }
+
+  const btn = (label: string, icon: ReactNode, action: () => void) => (
     <button
       type="button"
       className="rich-tool-button"
       title={label}
       aria-label={label}
-      onMouseDown={(e) => e.preventDefault()}
+      onMouseDown={(event) => {
+        rememberSelection();
+        event.preventDefault();
+      }}
       onClick={action}
     >
-      {content}
+      <span className="rich-tool-icon" aria-hidden="true">{icon}</span>
+      <span className="rich-tool-label">{label}</span>
     </button>
   );
 
@@ -156,133 +295,152 @@ function RichTextEditor({
     <div className="word-editor-layout">
       <section className="rich-editor">
         <div className="word-ribbon">
-          <div className="word-ribbon-tabs">
-            <span className="is-active">Главная</span>
-            <span>Вставка</span>
-            <span>Формат</span>
+          <div className="word-ribbon-tabs" role="tablist" aria-label="Разделы инструментов редактора">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "home"}
+              className={activeTab === "home" ? "is-active" : ""}
+              onClick={() => setActiveTab("home")}
+            >
+              <FileText size={15} /> Главная
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "insert"}
+              className={activeTab === "insert" ? "is-active" : ""}
+              onClick={() => setActiveTab("insert")}
+            >
+              <Plus size={15} /> Вставка
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "format"}
+              className={activeTab === "format" ? "is-active" : ""}
+              onClick={() => setActiveTab("format")}
+            >
+              <Palette size={15} /> Формат
+            </button>
           </div>
 
-          <div
-            className="rich-editor-toolbar"
-            aria-label="Панель форматирования"
-          >
-            <div className="rich-toolbar-group">
-              {btn("Отменить", () => command("undo"), "↶")}
-              {btn("Повторить", () => command("redo"), "↷")}
-              <i />
+          <div className="rich-editor-toolbar" aria-label="Панель инструментов редактора">
+            {activeTab === "home" && (
+              <>
+                <div className="rich-toolbar-group">
+                  {btn("Отменить", <Undo2 size={16} />, () => command("undo"))}
+                  {btn("Повторить", <Redo2 size={16} />, () => command("redo"))}
+                  <i aria-hidden="true" />
+                  {btn("Жирный", <Bold size={16} />, () => command("bold"))}
+                  {btn("Курсив", <Italic size={16} />, () => command("italic"))}
+                  {btn("Подчёркнутый", <Underline size={16} />, () => command("underline"))}
+                  {btn("Зачёркнутый", <Strikethrough size={16} />, () => command("strikeThrough"))}
+                  {btn("Нижний индекс", <Subscript size={16} />, () => command("subscript"))}
+                  {btn("Верхний индекс", <Superscript size={16} />, () => command("superscript"))}
+                </div>
+                <div className="rich-toolbar-group">
+                  {btn("Маркированный список", <List size={16} />, () => command("insertUnorderedList"))}
+                  {btn("Нумерованный список", <ListOrdered size={16} />, () => command("insertOrderedList"))}
+                  {btn("Цитата", <Quote size={16} />, () => command("formatBlock", "<blockquote>"))}
+                  {btn("Горизонтальная линия", <Minus size={16} />, () => command("insertHorizontalRule"))}
+                </div>
+              </>
+            )}
 
-              {btn("Жирный", () => command("bold"), <strong>B</strong>)}
-              {btn("Курсив", () => command("italic"), <em>I</em>)}
-              {btn("Подчёркнутый", () => command("underline"), <u>U</u>)}
-              {btn("Зачёркнутый", () => command("strikeThrough"), <s>S</s>)}
-              {btn("Нижний индекс", () => command("subscript"), "x₂")}
-              {btn("Верхний индекс", () => command("superscript"), "x²")}
+            {activeTab === "insert" && (
+              <>
+                <div className="rich-toolbar-group">
+                  {btn("Вставить текст из буфера", <ClipboardPaste size={16} />, () => void pastePlainText())}
+                  {btn("Добавить ссылку", <Link2 size={16} />, addLink)}
+                  {btn("Удалить ссылку", <Unlink size={16} />, removeLink)}
+                  {btn("Вставить изображение", <ImagePlus size={16} />, addImage)}
+                  {btn("Вставить таблицу", <Table2 size={16} />, addTable)}
+                  {btn("Горизонтальная линия", <Minus size={16} />, () => command("insertHorizontalRule"))}
+                </div>
+                <p className="rich-toolbar-note">
+                  Вставка текста выполняется без внешнего форматирования. Для ссылки сначала выдели нужный фрагмент.
+                </p>
+              </>
+            )}
 
-              <select
-                aria-label="Шрифт"
-                defaultValue="Arial"
-                onChange={(e) => command("fontName", e.target.value)}
-              >
-                <option>Arial</option>
-                <option>Georgia</option>
-                <option>Verdana</option>
-                <option>Tahoma</option>
-                <option>Times New Roman</option>
-              </select>
+            {activeTab === "format" && (
+              <>
+                <div className="rich-toolbar-group">
+                  <label className="rich-select-control">
+                    <span>Стиль абзаца</span>
+                    <select
+                      defaultValue="p"
+                      onMouseDown={rememberSelection}
+                      onChange={(event) => command("formatBlock", `<${event.target.value}>`)}
+                    >
+                      <option value="p">Обычный текст</option>
+                      <option value="h1">Заголовок 1</option>
+                      <option value="h2">Заголовок 2</option>
+                      <option value="h3">Заголовок 3</option>
+                      <option value="h4">Заголовок 4</option>
+                      <option value="pre">Блок кода</option>
+                    </select>
+                  </label>
+                  <label className="rich-select-control">
+                    <span>Шрифт</span>
+                    <select defaultValue="Arial" onMouseDown={rememberSelection} onChange={(event) => command("fontName", event.target.value)}>
+                      <option>Arial</option>
+                      <option>Georgia</option>
+                      <option>Verdana</option>
+                      <option>Tahoma</option>
+                      <option>Times New Roman</option>
+                    </select>
+                  </label>
+                  <label className="rich-select-control rich-size-control">
+                    <span>Размер</span>
+                    <select defaultValue="3" onMouseDown={rememberSelection} onChange={(event) => command("fontSize", event.target.value)}>
+                      <option value="1">8 pt</option>
+                      <option value="2">10 pt</option>
+                      <option value="3">12 pt</option>
+                      <option value="4">14 pt</option>
+                      <option value="5">18 pt</option>
+                      <option value="6">24 pt</option>
+                      <option value="7">36 pt</option>
+                    </select>
+                  </label>
+                </div>
 
-              <select
-                aria-label="Размер"
-                defaultValue="3"
-                onChange={(e) => command("fontSize", e.target.value)}
-              >
-                {[
-                  [1, "8 pt"],
-                  [2, "10 pt"],
-                  [3, "12 pt"],
-                  [4, "14 pt"],
-                  [5, "18 pt"],
-                  [6, "24 pt"],
-                  [7, "36 pt"],
-                ].map(([v, l]) => (
-                  <option key={v} value={v}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div className="rich-toolbar-group">
+                  <label className="rich-color-control">
+                    <Palette size={16} />
+                    <span>Цвет текста</span>
+                    <input type="color" defaultValue="#263b2b" onMouseDown={rememberSelection} onChange={(event) => command("foreColor", event.target.value)} />
+                  </label>
+                  <label className="rich-color-control">
+                    <Highlighter size={16} />
+                    <span>Выделение</span>
+                    <input type="color" defaultValue="#fff2a8" onMouseDown={rememberSelection} onChange={(event) => command("hiliteColor", event.target.value)} />
+                  </label>
+                  <label className="rich-select-control rich-line-height-control">
+                    <span>Межстрочный интервал</span>
+                    <select defaultValue="1.8" onMouseDown={rememberSelection} onChange={(event) => applyLineHeight(event.target.value)}>
+                      <option value="1">Одинарный · 1.0</option>
+                      <option value="1.15">Компактный · 1.15</option>
+                      <option value="1.5">Полуторный · 1.5</option>
+                      <option value="1.8">Обычный · 1.8</option>
+                      <option value="2">Двойной · 2.0</option>
+                      <option value="2.5">Широкий · 2.5</option>
+                    </select>
+                  </label>
+                </div>
 
-            <div className="rich-toolbar-group">
-              <select
-                aria-label="Стиль абзаца"
-                defaultValue="p"
-                onChange={(e) => command("formatBlock", e.target.value)}
-              >
-                <option value="p">Обычный текст</option>
-                <option value="h1">Заголовок 1</option>
-                <option value="h2">Заголовок 2</option>
-                <option value="h3">Заголовок 3</option>
-                <option value="h4">Заголовок 4</option>
-                <option value="pre">Блок кода</option>
-              </select>
-
-              <label className="rich-color-control">
-                A
-                <input
-                  aria-label="Цвет текста"
-                  type="color"
-                  defaultValue="#263b2b"
-                  onChange={(e) => command("foreColor", e.target.value)}
-                />
-              </label>
-
-              <label className="rich-color-control">
-                ▰
-                <input
-                  aria-label="Цвет выделения"
-                  type="color"
-                  defaultValue="#fff2a8"
-                  onChange={(e) => command("hiliteColor", e.target.value)}
-                />
-              </label>
-
-              {btn(
-                "Маркированный список",
-                () => command("insertUnorderedList"),
-                "• Список"
-              )}
-
-              {btn(
-                "Нумерованный список",
-                () => command("insertOrderedList"),
-                "1. Список"
-              )}
-
-              {btn("Цитата", () => command("formatBlock", "blockquote"), "❝")}
-              {btn("Ссылка", askLink, "↗")}
-              {btn("Изображение по URL", addImage, "▧")}
-              {btn("Таблица", addTable, "▦")}
-
-              {btn(
-                "Горизонтальная линия",
-                () => command("insertHorizontalRule"),
-                "―"
-              )}
-            </div>
-
-            <div className="rich-toolbar-group">
-              {btn("По левому краю", () => command("justifyLeft"), "⇤")}
-              {btn("По центру", () => command("justifyCenter"), "↔")}
-              {btn("По правому краю", () => command("justifyRight"), "⇥")}
-              {btn("По ширине", () => command("justifyFull"), "☰")}
-              {btn("Уменьшить отступ", () => command("outdent"), "←")}
-              {btn("Увеличить отступ", () => command("indent"), "→")}
-
-              {btn(
-                "Очистить форматирование",
-                () => command("removeFormat"),
-                "Очистить"
-              )}
-            </div>
+                <div className="rich-toolbar-group">
+                  {btn("По левому краю", <AlignLeft size={16} />, () => command("justifyLeft"))}
+                  {btn("По центру", <AlignCenter size={16} />, () => command("justifyCenter"))}
+                  {btn("По правому краю", <AlignRight size={16} />, () => command("justifyRight"))}
+                  {btn("По ширине", <AlignJustify size={16} />, () => command("justifyFull"))}
+                  {btn("Уменьшить отступ", <IndentDecrease size={16} />, () => command("outdent"))}
+                  {btn("Увеличить отступ", <IndentIncrease size={16} />, () => command("indent"))}
+                  {btn("Очистить форматирование", <Eraser size={16} />, () => command("removeFormat"))}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -295,15 +453,17 @@ function RichTextEditor({
             role="textbox"
             aria-label="Содержание статьи"
             aria-multiline="true"
-            data-placeholder="Начни писать статью… Выделяй текст и используй инструменты форматирования."
+            data-placeholder="Начни писать статью… Выдели текст и выбери действие на панели инструментов."
             onInput={sync}
             onBlur={sync}
+            onMouseUp={rememberSelection}
+            onKeyUp={rememberSelection}
+            onFocus={rememberSelection}
           />
         </div>
 
         <div className="rich-editor-hint">
-          Изменения сохраняются вместе со статьёй. Используй панель
-          инструментов для оформления текста, списков, таблиц и изображений.
+          <strong>Как пользоваться:</strong> выдели текст и открой «Формат», чтобы изменить шрифт, цвет, выравнивание или межстрочный интервал. Во вкладке «Вставка» добавляются ссылки, изображения и таблицы.
         </div>
       </section>
 
@@ -311,82 +471,39 @@ function RichTextEditor({
         <div className="word-side-card">
           <span className="word-side-kicker">ДОКУМЕНТ</span>
           <h3>Сводка статьи</h3>
-
-          <div className="word-stat">
-            <span>Слова</span>
-            <b>{stats.words}</b>
-          </div>
-
-          <div className="word-stat">
-            <span>Символы</span>
-            <b>{stats.chars}</b>
-          </div>
-
-          <div className="word-stat">
-            <span>Время чтения</span>
-            <b>{Math.max(1, Math.ceil(stats.words / 180))} мин.</b>
-          </div>
+          <div className="word-stat"><span>Слова</span><b>{stats.words}</b></div>
+          <div className="word-stat"><span>Символы</span><b>{stats.chars}</b></div>
+          <div className="word-stat"><span>Время чтения</span><b>{Math.max(1, Math.ceil(stats.words / 180))} мин.</b></div>
         </div>
 
         <div className="word-side-card">
           <span className="word-side-kicker">БЫСТРАЯ ВСТАВКА</span>
-          <h3>Элементы</h3>
-
-          <button
-            type="button"
-            onClick={() =>
-              insert("<h2>Новый раздел</h2><p>Текст раздела…</p>")
-            }
-          >
-            ＋ Заголовок и текст
+          <h3>Готовые блоки</h3>
+          <button type="button" className="word-side-action" onMouseDown={rememberSelection} onClick={() => insert("<h2>Новый раздел</h2><p>Текст раздела…</p>")}>
+            <Heading2 size={16} /><span>Заголовок и текст</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              insert("<blockquote><p>Важная информация…</p></blockquote>")
-            }
-          >
-            ❝ Блок-цитата
+          <button type="button" className="word-side-action" onMouseDown={rememberSelection} onClick={() => insert("<blockquote><p>Важная информация…</p></blockquote>")}>
+            <Quote size={16} /><span>Блок-цитата</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              insert(
-                '<div style="padding:14px 16px;border-left:4px solid #42634b;background:#edf4ed;border-radius:8px;margin:14px 0"><strong>Важно</strong><p>Добавь пояснение для участников.</p></div>'
-              )
-            }
-          >
-            ▤ Важное примечание
+          <button type="button" className="word-side-action" onMouseDown={rememberSelection} onClick={() => insert('<div class="article-callout" style="padding:14px 16px;border-left:4px solid #42634b;background:#edf4ed;border-radius:8px;margin:14px 0"><strong>Важно</strong><p>Добавь пояснение для участников.</p></div><p><br></p>')}>
+            <AlertCircle size={16} /><span>Важное примечание</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              insert("<pre><code>Вставь пример или команду</code></pre>")
-            }
-          >
-            {"</>"} Блок кода
+          <button type="button" className="word-side-action" onMouseDown={rememberSelection} onClick={() => insert("<pre><code>Вставь пример или команду</code></pre><p><br></p>")}>
+            <Code2 size={16} /><span>Блок кода</span>
           </button>
-
-          <button type="button" onClick={addTable}>
-            ▦ Таблица
+          <button type="button" className="word-side-action" onMouseDown={rememberSelection} onClick={addTable}>
+            <Table2 size={16} /><span>Таблица</span>
           </button>
         </div>
 
         <div className="word-side-tip">
           <b>Подсказка</b>
-          <p>
-            Выдели фрагмент текста, чтобы применить к нему стиль, цвет или
-            форматирование.
-          </p>
+          <p>Сначала выдели текст в документе, затем нажми нужную функцию. Межстрочный интервал применяется к абзацу, в котором стоит курсор.</p>
         </div>
       </aside>
     </div>
   );
 }
-
 
 export default function Admin() {
   const [user, setUser] = useState<any>(null);
